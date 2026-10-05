@@ -17,4 +17,8 @@ Lieto visam, ko izmaiņa skar, ne tikai jaunajām rindām.
 
 | Vieta (fails:rinda) | Nozīmīgums | Ietekme | Labojums vai pamatojums |
 |---|---|---|---|
-| | bloķējošs / jālabo / sīkums | | |
+| tracker/CR-C.md:44 (nekomitēts labojums) | bloķējošs | Atvērtais jautājums par mēneša beigām aizpildīts ar "Mans pieņēmums", lai gan CLAUDE.md aizliedz mainīt tracker/. Uzvedība 31. datumiem (31.10 → 28.02, 31.05 → 30.09) nav apstiprināta, bet kods to jau īsteno. | Nav labots: labojums ir lietotāja darba kopijā. Atsaukt ar `git checkout tracker/CR-C.md` un jautāt produkta īpašniekam. Līdz atbildei 31. datumu uzvedību nelaist produkcijā. (1., 9. p.) |
+| app/main.py:79, tests/test_crc_extend.py:164 | jālabo | Komentārs testā sauc pieņēmumu par "precizējumu, 2026-10-05". Lasītājs domās, ka uzvedība ir apstiprināta. | Atlikts līdz produkta īpašnieka atbildei: pēc tās nomainīt komentāru uz atbildētāju un datumu vai mainīt `add_months` un testus. |
+| app/errors.py:71-75 | jālabo | 500 atbildē bija `str(exc)`. `storage.update_due_date` (storage.py:256) met `LookupError` ar ID, SQLite versiju un `db=:memory:`, un tas nonāktu klienta atbildē. Līgums prasa: "Bez personas datiem un iekšējas informācijas". (5. p.) | Labots: atbildē vispārīgs ziņojums, žurnālā tikai kļūdas tips un ceļš. Tests `test_extend_unexpected_error_hides_internal_details` krīt bez labojuma un iziet ar to (10. p.). |
+| app/main.py:187-201 | sīkums | Statusa pārbaude un termiņa maiņa nav vienā transakcijā. Paralēla atsaukšana starp tām ļautu pagarināt WITHDRAWN iesniegumu. | Atlikts: mācību prototips, atmiņas DB, viens process. Produkcijā `UPDATE ... WHERE id = ? AND status IN (...)`. |
+| app/storage.py:245 (CR-C neskar) | jālabo | `update_status` žurnālā ieraksta visu ierakstu, arī personas kodu, vārdu un e-pastu. (4. p.) | Atlikts: nav CR-C kods (9. p.). Vajag atsevišķu pieteikumu. |
