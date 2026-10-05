@@ -19,6 +19,14 @@
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { background: #e8ecf1; }
     .count { margin-top: 12px; color: #444; }
+    .extend { margin-top: 24px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+    .extend h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .extend .fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .extend textarea { width: 100%; min-height: 64px; padding: 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; margin-top: 4px; }
+    .result { margin-top: 12px; }
+    .result.error { color: #9B1C1C; }
+    .result.ok { color: #1B5E20; }
+    tbody tr { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -56,6 +64,27 @@
       </thead>
       <tbody id="rows"></tbody>
     </table>
+
+    <!-- CR-C: termiņa pagarināšana. Validāciju dara API, forma tikai parāda atbildi. -->
+    <form class="extend" id="extend" novalidate>
+      <h2>Pagarināt termiņu</h2>
+      <div class="fields">
+        <div>
+          <label for="extend-id">Iesnieguma numurs</label>
+          <input id="extend-id" name="id" placeholder="IES-2026-000001">
+        </div>
+        <div>
+          <label for="extend-date">Jaunais termiņš</label>
+          <input id="extend-date" name="newDueDate" type="date">
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <label for="extend-reason">Iemesls (iedzīvotājs to redzēs paziņojumā)</label>
+        <textarea id="extend-reason" name="reason"></textarea>
+      </div>
+      <div style="margin-top: 12px;"><button type="submit">Pagarināt</button></div>
+      <div class="result" id="extend-result" role="status" aria-live="polite"></div>
+    </form>
   </main>
   <script>
     const rows = document.getElementById("rows");
@@ -86,11 +115,49 @@
         const tr = document.createElement("tr");
         [s.id, s.status, s.topic, s.receivedAt.slice(0, 10), s.dueDate, s.replyChannel]
           .forEach((value) => tr.appendChild(cell(value)));
+        tr.addEventListener("click", () => {
+          document.getElementById("extend-id").value = s.id;
+        });
         rows.appendChild(tr);
       }
     }
 
+    const extendResult = document.getElementById("extend-result");
+
+    function showError(status, body) {
+      const error = body && body.error;
+      let text = "Kļūda: " + (error ? error.code + " · " + error.message : "HTTP " + status);
+      if (error && Array.isArray(error.details)) {
+        text += " (" + error.details.map((d) => d.field + ": " + d.issue).join(", ") + ")";
+      }
+      extendResult.className = "result error";
+      extendResult.textContent = text;
+    }
+
+    async function extend(event) {
+      event.preventDefault();
+      const id = document.getElementById("extend-id").value.trim();
+      const payload = {
+        newDueDate: document.getElementById("extend-date").value,
+        reason: document.getElementById("extend-reason").value,
+      };
+      const response = await fetch("/submissions/" + encodeURIComponent(id) + "/extend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        showError(response.status, body);
+        return;
+      }
+      extendResult.className = "result ok";
+      extendResult.textContent = "Termiņš pagarināts: " + body.id + " līdz " + body.dueDate;
+      load();
+    }
+
     document.getElementById("filters").addEventListener("submit", load);
+    document.getElementById("extend").addEventListener("submit", extend);
     load();
   </script>
 </body>
