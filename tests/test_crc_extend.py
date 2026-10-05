@@ -183,3 +183,24 @@ def test_extend_month_end_uses_last_day(client, valid_payload, monkeypatch):
 
     assert extend(client, submission_id, "2026-10-01").status_code == 400
     assert extend(client, submission_id, "2026-09-30").status_code == 200
+
+
+# Kontrolsaraksta 5. punkts: neparedzēta kļūda neatklāj iekšējo informāciju.
+def test_extend_unexpected_error_hides_internal_details(created, monkeypatch, caplog):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    def broken_update(submission_id, due_date):
+        raise LookupError(f"submissions: no row with id={submission_id!r} (sqlite3)")
+
+    monkeypatch.setattr(storage, "update_due_date", broken_update)
+    client = TestClient(app, raise_server_exceptions=False)
+    with caplog.at_level(logging.DEBUG):
+        response = extend(client, created["id"], "2026-12-15")
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {"code": "INTERNAL_ERROR", "message": "Internal server error"}
+    }
+    assert "sqlite3" not in caplog.text
